@@ -9,8 +9,8 @@ This file is the authoritative checkpoint ledger. It records verified outcomes, 
 | 2 — Evidence pipeline | Complete (offline) | Pending commit | Composio-first and HTTPS fallback transports, official redirect rejection, bounded response handling, deterministic evidence packs, and atomic run-scoped artifacts are covered by 18 offline tests. Live Composio schema confirmation remains a Checkpoint-0 task. |
 | 3 — Dual-pass research | In progress (offline) | — | Researcher and critic prompts, strict ordered JSONL parsing, request ledger, citation validation, and reconciliation exist. Live two-app preflight remains blocked on credentials. |
 | 4 — Full 100-app run | Not started | — | Blocked until Checkpoint 3 and API credentials. |
-| 5 — Analysis and human verification | Not started | — | Requires final dataset. |
-| 6 — Case study and proof | Not started | — | Renderer can be built against fixtures before a live run. |
+| 5 — Analysis and human verification | Complete (offline) | Pending commit | Deterministic distributions, prioritisation, stratified sample selection, and before/after accuracy scoring are implemented. Human judgement remains required after the live run. |
+| 6 — Case study and proof | In progress | — | A single-file HTML renderer is tested with fixture data. Batch orchestration and the executable single-app path remain. |
 | 7 — Submit readiness | Not started | — | Static deployment is P0; hosted service is P2. |
 
 ## Git history

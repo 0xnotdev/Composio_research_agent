@@ -24,7 +24,7 @@ that are unsupported even if you would otherwise agree. Do not copy unsupported 
 def build_critic_user_prompt(
     apps: list[AppSeed],
     packs: dict[str, EvidencePack],
-    sources: dict[str, EvidenceSource],
+    sources_by_app: dict[str, dict[str, EvidenceSource]],
     researcher_records: list[dict[str, Any]],
 ) -> str:
     first_pass = {record["app_id"]: record for record in researcher_records}
@@ -35,7 +35,7 @@ def build_critic_user_prompt(
                 "app_id": app.app_id,
                 "name": app.name,
                 "category": app.category,
-                "evidence": packs[app.app_id].as_prompt_payload(sources),
+                "evidence": packs[app.app_id].as_prompt_payload(sources_by_app[app.app_id]),
                 "researcher_record": first_pass[app.app_id],
             }
         )
@@ -46,12 +46,12 @@ def critique_batch(
     client: OpenRouterClient,
     apps: list[AppSeed],
     packs: dict[str, EvidencePack],
-    sources: dict[str, EvidenceSource],
+    sources_by_app: dict[str, dict[str, EvidenceSource]],
     researcher_records: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     raw = client.complete(
         system=CRITIC_SYSTEM_PROMPT,
-        user=build_critic_user_prompt(apps, packs, sources, researcher_records),
+        user=build_critic_user_prompt(apps, packs, sources_by_app, researcher_records),
         purpose="critic_batch",
     )
     return parse_ordered_jsonl(raw, [app.app_id for app in apps])

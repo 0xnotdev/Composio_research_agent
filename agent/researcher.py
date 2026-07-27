@@ -36,7 +36,7 @@ fields; technical viability ready/workaround_needed/no_public_api/not_applicable
 
 
 def build_researcher_user_prompt(
-    apps: list[AppSeed], packs: dict[str, EvidencePack], sources: dict[str, EvidenceSource]
+    apps: list[AppSeed], packs: dict[str, EvidencePack], sources_by_app: dict[str, dict[str, EvidenceSource]]
 ) -> str:
     payload: list[dict[str, Any]] = []
     for app in apps:
@@ -45,7 +45,7 @@ def build_researcher_user_prompt(
                 "app_id": app.app_id,
                 "name": app.name,
                 "category": app.category,
-                "evidence": packs[app.app_id].as_prompt_payload(sources),
+                "evidence": packs[app.app_id].as_prompt_payload(sources_by_app[app.app_id]),
             }
         )
     return json.dumps({"apps": payload}, ensure_ascii=False, separators=(",", ":"))
@@ -55,11 +55,11 @@ def research_batch(
     client: OpenRouterClient,
     apps: list[AppSeed],
     packs: dict[str, EvidencePack],
-    sources: dict[str, EvidenceSource],
+    sources_by_app: dict[str, dict[str, EvidenceSource]],
 ) -> list[dict[str, Any]]:
     raw = client.complete(
         system=RESEARCHER_SYSTEM_PROMPT,
-        user=build_researcher_user_prompt(apps, packs, sources),
+        user=build_researcher_user_prompt(apps, packs, sources_by_app),
         purpose="researcher_batch",
     )
     return parse_ordered_jsonl(raw, [app.app_id for app in apps])

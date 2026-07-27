@@ -26,6 +26,19 @@ FIELD_PATHS = (
     "viability.blockers",
 )
 
+ALLOWED_VALUES: dict[str, set[str]] = {
+    "auth_methods": {"oauth2", "api_key", "basic", "token", "other", "none", "unknown"},
+    "credential_path": {"self_serve", "paid_or_admin_gated", "partner_or_sales_gated", "unknown", "not_applicable"},
+    "api_surface.protocols": {"rest", "graphql", "rest_and_graphql", "other", "none_public", "unknown", "not_applicable"},
+    "api_surface.breadth": {"narrow", "moderate", "broad", "unknown", "not_applicable"},
+    "api_surface.documented": {"yes", "no", "unknown"},
+    "mcp.official_vendor_mcp": {"yes", "no", "unknown"},
+    "mcp.public_mcp_exists": {"yes", "no", "unknown"},
+    "extras.webhooks": {"yes", "no", "unknown", "not_applicable"},
+    "extras.sandbox": {"yes", "no", "unknown", "not_applicable"},
+    "viability.technical": {"ready", "workaround_needed", "no_public_api", "not_applicable", "unknown"},
+}
+
 
 @dataclass(frozen=True, slots=True)
 class ValidationResult:
@@ -70,6 +83,14 @@ def _requires_citation(value: Any) -> bool:
     return True
 
 
+def _has_allowed_value(path: str, value: Any) -> bool:
+    allowed = ALLOWED_VALUES.get(path)
+    if allowed is None or value is None:
+        return True
+    values = value if isinstance(value, list) else [value]
+    return bool(values) and all(isinstance(item, str) and item in allowed for item in values)
+
+
 def validate_pass_record(record: dict[str, Any], expected_app_id: str, evidence_ids: set[str]) -> ValidationResult:
     """Return a safe record; ungrounded fields are nulled instead of published."""
     clean = copy.deepcopy(record)
@@ -97,6 +118,10 @@ def validate_pass_record(record: dict[str, Any], expected_app_id: str, evidence_
         if _requires_citation(field["value"]) and not citations:
             errors.append(f"{path} populated value lacks primary-evidence citation")
             _set_path(clean, path, insufficient("uncited claim"))
+            continue
+        if not _has_allowed_value(path, field["value"]):
+            errors.append(f"{path} has a value outside the approved enum")
+            _set_path(clean, path, insufficient("value outside approved enum"))
             continue
         field.setdefault("confidence", Confidence.SUPPORTED_PRIMARY if citations else Confidence.INSUFFICIENT_EVIDENCE)
         field.setdefault("note", None)

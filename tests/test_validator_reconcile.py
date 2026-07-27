@@ -31,6 +31,13 @@ class ValidatorAndReconcileTests(unittest.TestCase):
         self.assertFalse(result.is_clean)
         self.assertIsNone(result.record["auth_methods"]["value"])
 
+    def test_validator_nulls_values_outside_the_schema_enum(self) -> None:
+        record = valid_record()
+        record["mcp"]["official_vendor_mcp"] = field(True)
+        result = validate_pass_record(record, "slack", {"E01"})
+        self.assertFalse(result.is_clean)
+        self.assertIsNone(result.record["mcp"]["official_vendor_mcp"]["value"])
+
     def test_reconciliation_derives_ready_now_from_supported_inputs(self) -> None:
         first = validate_pass_record(valid_record(), "slack", {"E01"}).record
         second = validate_pass_record(copy.deepcopy(first), "slack", {"E01"}).record

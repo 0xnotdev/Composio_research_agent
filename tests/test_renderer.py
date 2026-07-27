@@ -16,6 +16,7 @@ class RendererTests(unittest.TestCase):
         self.assertNotIn('id="dataset"', page)
         self.assertIn("Slack", page)
         self.assertIn("https://api.slack.com", page)
+        self.assertIn("How to read blanks and unknowns", page)
         self.assertNotIn("<link rel=\"stylesheet\"", page)
 
 

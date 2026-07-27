@@ -43,6 +43,12 @@ Render the static page after completing human verification:
 python -m agent.render_case_study --dataset data/runs/audit-1/dataset_final.json --analytics data/runs/audit-1/analytics.json --verification data/runs/audit-1/verification_results.json --output site/case_study.html --generated-at 2026-07-27
 ```
 
+Complete the generated `verification_sample.json` using the linked official documentation. For each reviewed field, enter the grounded value, mark whether pass one and the reconciled pre-human value are correct, and retain the source URL. Then calculate the displayed accuracy figures deterministically:
+
+```powershell
+python -m agent.verify_sample --sample data/runs/audit-1/verification_sample.json --output data/runs/audit-1/verification_results.json
+```
+
 The one-app proof reuses the exact pipeline:
 
 ```powershell

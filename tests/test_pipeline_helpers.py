@@ -4,7 +4,7 @@ import unittest
 
 from agent.evidence_fetcher import FetchResponse
 from agent.models import AppSeed
-from agent.pipeline import ResearchPipeline, chunks
+from agent.pipeline import ResearchPipeline, chunks, is_valid_pass_batch
 from agent.source_policy import SourcePolicy
 from agent.storage import RunStore
 
@@ -14,6 +14,11 @@ class PipelineHelperTests(unittest.TestCase):
         apps = [AppSeed(str(index), str(index), "A", "example.com") for index in range(13)]
         result = list(chunks(apps))
         self.assertEqual([len(batch) for batch in result], [8, 5])
+
+    def test_completed_batch_is_reused_only_for_matching_app_ids(self) -> None:
+        apps = [AppSeed("alpha", "Alpha", "A", "example.com"), AppSeed("beta", "Beta", "B", "example.com")]
+        self.assertTrue(is_valid_pass_batch([{"app_id": "alpha"}, {"app_id": "beta"}], apps))
+        self.assertFalse(is_valid_pass_batch([{"app_id": "beta"}, {"app_id": "alpha"}], apps))
 
     def test_offline_fixture_run_persists_reconciled_dataset(self) -> None:
         def field(value, citations=("E01",)):

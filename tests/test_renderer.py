@@ -17,6 +17,7 @@ class RendererTests(unittest.TestCase):
         self.assertNotIn('id="dataset"', page)
         self.assertIn("Slack", page)
         self.assertIn("https://api.slack.com", page)
+        self.assertIn("https://github.com/0xnotdev/Composio_research_agent", page)
         self.assertIn("How to read blanks and unknowns", page)
         self.assertIn("Agent-generated portfolio patterns", page)
         self.assertIn("OAuth is common", page)

@@ -34,8 +34,9 @@ class Settings:
     request_limit: int
 
     @classmethod
-    def from_environment(cls) -> "Settings":
-        load_dotenv()
+    def from_environment(cls, *, load_dotenv_file: bool = True) -> "Settings":
+        if load_dotenv_file:
+            load_dotenv()
         limit = int(os.getenv("OPENROUTER_REQUEST_LIMIT", str(DEFAULT_REQUEST_LIMIT)))
         if not 1 <= limit <= DEFAULT_REQUEST_LIMIT:
             raise ValueError(f"OPENROUTER_REQUEST_LIMIT must be between 1 and {DEFAULT_REQUEST_LIMIT}")

@@ -42,6 +42,14 @@ class AnalyticsAndVerificationTests(unittest.TestCase):
         self.assertEqual(result["pass1_accuracy_percent"], 100.0)
         self.assertEqual(result["final_pre_human_accuracy_percent"], 100.0)
 
+    def test_category_representative_prefers_supported_answers(self) -> None:
+        weak = record("weak", "A")
+        for path in ("auth_methods", "credential_path"):
+            weak[path] = {"value": None, "citations": [], "confidence": "insufficient_evidence"}
+        strong = record("strong", "A")
+        sample = select_verification_sample([weak, strong])
+        self.assertEqual(sample[0]["app_id"], "strong")
+
 
 if __name__ == "__main__":
     unittest.main()

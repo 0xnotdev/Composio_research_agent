@@ -31,16 +31,22 @@ def _uncertainty(record: dict[str, Any]) -> int:
 
 
 def select_verification_sample(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """One record per category plus two highest-uncertainty non-duplicates."""
+    """One answerable representative per category plus two deliberate hard cases."""
     by_category: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records:
         by_category[record.get("category", "Unknown")].append(record)
     sample: list[dict[str, Any]] = []
     selected_ids: set[str] = set()
     for category in sorted(by_category):
-        candidate = max(by_category[category], key=lambda record: (_uncertainty(record), record["app_id"]))
+        # A human accuracy check is useful only when there is an answer to check.
+        # Keep hard cases as a separate stratum instead of making all 10 category
+        # representatives low-coverage records.
+        candidate = max(
+            by_category[category],
+            key=lambda record: (_supported_field_count(record), -_uncertainty(record), record["app_id"]),
+        )
         selected_ids.add(candidate["app_id"])
-        sample.append(_template(candidate, f"category representative: {category}"))
+        sample.append(_template(candidate, f"best-evidenced category representative: {category}"))
     for record in sorted(records, key=lambda item: (-_uncertainty(item), item["app_id"])):
         if len(sample) >= 12:
             break
@@ -48,6 +54,16 @@ def select_verification_sample(records: list[dict[str, Any]]) -> list[dict[str, 
             selected_ids.add(record["app_id"])
             sample.append(_template(record, "highest remaining uncertainty / hard case"))
     return sample
+
+
+def _supported_field_count(record: dict[str, Any]) -> int:
+    count = 0
+    for path in JUDGED_PATHS:
+        field = get_path(record, path, {})
+        value = field.get("value") if isinstance(field, dict) else None
+        if isinstance(field, dict) and value is not None and value != "unknown" and field.get("citations"):
+            count += 1
+    return count
 
 
 def _template(record: dict[str, Any], reason: str) -> dict[str, Any]:

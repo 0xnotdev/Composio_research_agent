@@ -49,6 +49,12 @@ Complete the generated `verification_sample.json` using the linked official docu
 python -m agent.verify_sample --sample data/runs/audit-1/verification_sample.json --output data/runs/audit-1/verification_results.json
 ```
 
+To regenerate an untouched worksheet using the highest-coverage app in each category plus two difficult cases, run:
+
+```powershell
+python -m agent.create_verification_sample --dataset data/runs/audit-1/dataset_final.json --output data/runs/audit-1/verification_sample.json
+```
+
 The one-app proof reuses the exact pipeline:
 
 ```powershell

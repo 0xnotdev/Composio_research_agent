@@ -11,7 +11,7 @@ This is the verified checkpoint record for the take-home implementation. The ori
 | 4 - Full audit | Complete | `data/runs/audit-2/dataset_final.json` contains exactly 100 distinct reconciled records. It has no invalid citation references and no boolean MCP values outside the contract. |
 | 5 - Analysis and verification | Complete, pending human judgement | Analytics and a stratified 12-app worksheet exist. The deterministic scorer is implemented; human correctness decisions have not been invented. |
 | 6 - Case study and proof | Complete, pending hosted visual QA | `site/index.html` has 100 table rows, filters, official evidence links, and the single-app proof command. |
-| 7 - Submit readiness | Awaiting bounded manual gate | GitHub Pages workflow is present; reviewer must complete the 12-app sample and enable Pages if a public link is required. |
+| 7 - Submit readiness | Awaiting bounded manual gate | GitHub Pages workflow is present and was triggered successfully; its first deployment stopped at GitHub's `configure-pages` step because Pages has not yet been enabled in repository settings. |
 
 ## Current audit snapshot
 

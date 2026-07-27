@@ -1,10 +1,12 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from agent.agent_output import AgentOutputError
 from agent.evidence_fetcher import FetchResponse
 from agent.models import AppSeed
-from agent.pipeline import ResearchPipeline, chunks, is_valid_pass_batch
+from agent.pipeline import ResearchPipeline, chunks, is_valid_pass_batch, research_with_fallback
 from agent.source_policy import SourcePolicy
 from agent.storage import RunStore
 
@@ -19,6 +21,13 @@ class PipelineHelperTests(unittest.TestCase):
         apps = [AppSeed("alpha", "Alpha", "A", "example.com"), AppSeed("beta", "Beta", "B", "example.com")]
         self.assertTrue(is_valid_pass_batch([{"app_id": "alpha"}, {"app_id": "beta"}], apps))
         self.assertFalse(is_valid_pass_batch([{"app_id": "beta"}, {"app_id": "alpha"}], apps))
+
+    def test_malformed_model_batch_is_recovered_by_splitting(self) -> None:
+        apps = [AppSeed("alpha", "Alpha", "A", "example.com"), AppSeed("beta", "Beta", "B", "example.com")]
+        with patch("agent.pipeline.research_batch", side_effect=[AgentOutputError("truncated"), [{"app_id": "alpha"}], [{"app_id": "beta"}]]) as mocked:
+            result = research_with_fallback(object(), apps, {}, {})
+        self.assertEqual([item["app_id"] for item in result], ["alpha", "beta"])
+        self.assertEqual(mocked.call_count, 3)
 
     def test_offline_fixture_run_persists_reconciled_dataset(self) -> None:
         def field(value, citations=("E01",)):

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .analytics import calculate_analytics
+from .agent_output import AgentOutputError
 from .config import PROJECT_ROOT, Settings
 from .composio_catalog import ComposioCatalogClient, cross_check
 from .critic import critique_batch
@@ -42,6 +43,31 @@ def is_valid_pass_batch(records: Any, batch: list[AppSeed]) -> bool:
     )
 
 
+def research_with_fallback(client: Any, batch: list[AppSeed], packs: dict[str, Any], sources: dict[str, dict[str, EvidenceSource]]) -> list[dict[str, Any]]:
+    """Split only a malformed model response; do not discard valid neighboring batches."""
+    try:
+        return research_batch(client, batch, packs, sources)
+    except AgentOutputError:
+        if len(batch) == 1:
+            return research_batch(client, batch, packs, sources)
+        midpoint = len(batch) // 2
+        return research_with_fallback(client, batch[:midpoint], packs, sources) + research_with_fallback(client, batch[midpoint:], packs, sources)
+
+
+def critique_with_fallback(client: Any, batch: list[AppSeed], packs: dict[str, Any], sources: dict[str, dict[str, EvidenceSource]], first_pass: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep the critic independent while recovering from truncated batch output."""
+    try:
+        return critique_batch(client, batch, packs, sources, first_pass)
+    except AgentOutputError:
+        if len(batch) == 1:
+            return critique_batch(client, batch, packs, sources, first_pass)
+        midpoint = len(batch) // 2
+        return (
+            critique_with_fallback(client, batch[:midpoint], packs, sources, first_pass[:midpoint])
+            + critique_with_fallback(client, batch[midpoint:], packs, sources, first_pass[midpoint:])
+        )
+
+
 class ResearchPipeline:
     def __init__(self, store: RunStore, policy: SourcePolicy, fetcher: Any, client: Any, request_limit: int, catalog_client: Any | None = None) -> None:
         self.store, self.policy, self.fetcher, self.client, self.request_limit, self.catalog_client = store, policy, fetcher, client, request_limit, catalog_client
@@ -63,20 +89,17 @@ class ResearchPipeline:
                     for item in cached_items
                     if isinstance(item, dict) and isinstance(item.get("source"), dict)
                 }
-                weak_cache = not sources or any(len(source.text.strip()) < 350 or source.text.strip().casefold().startswith('{"ok":false') for source in sources.values())
-                if weak_cache:
-                    pending_evidence[seed.app_id] = (seed, "refreshed")
-                else:
-                    self.store.append_event("evidence", "resumed", app_id=seed.app_id, source_count=len(sources))
+                # A persisted empty acquisition is a legitimate, explicit outcome;
+                # retrying it on every resume wastes time and changes the snapshot.
+                self.store.append_event("evidence", "resumed", app_id=seed.app_id, source_count=len(sources))
             else:
                 pending_evidence[seed.app_id] = (seed, "new")
                 sources = {}
             source_sets[seed.app_id] = sources
 
-        acquired: dict[str, tuple[list[Any], str]] = {}
         if pending_evidence:
-            # Network calls are independent. Keep writes on the main thread so the
-            # append-only audit log stays uncorrupted.
+            # Network calls are independent. Completed futures are checkpointed on
+            # the main thread immediately, preserving partial progress on failure.
             with ThreadPoolExecutor(max_workers=5, thread_name_prefix="evidence") as pool:
                 futures = {
                     pool.submit(acquire_official_evidence, seed, self.fetcher, self.policy): (app_id, state)
@@ -85,21 +108,18 @@ class ResearchPipeline:
                 for future in as_completed(futures):
                     app_id, state = futures[future]
                     try:
-                        acquired[app_id] = (future.result(), state)
+                        acquisitions = future.result()
                     except Exception as error:
-                        acquired[app_id] = ([], state)
+                        acquisitions = []
                         self.store.append_event("evidence", "failed", app_id=app_id, error=f"unexpected acquisition failure: {type(error).__name__}")
+                    raw_path = f"raw_evidence/{app_id}.json"
+                    self.store.write_json(raw_path, [acquisition_to_dict(acquisition) for acquisition in acquisitions])
+                    source_sets[app_id] = {acquisition.source.source_id: acquisition.source for acquisition in acquisitions if acquisition.source}
+                    failures = [acquisition.failure for acquisition in acquisitions if acquisition.failure]
+                    transports = sorted({acquisition.transport for acquisition in acquisitions})
+                    status = state if state == "refreshed" else ("ok" if source_sets[app_id] else "failed")
+                    self.store.append_event("evidence", status, app_id=app_id, source_count=len(source_sets[app_id]), transport=",".join(transports), failure=" | ".join(failures) if failures else None)
         for seed in seeds:
-            outcome = acquired.get(seed.app_id)
-            if outcome is not None:
-                acquisitions, state = outcome
-                raw_path = f"raw_evidence/{seed.app_id}.json"
-                self.store.write_json(raw_path, [acquisition_to_dict(acquisition) for acquisition in acquisitions])
-                source_sets[seed.app_id] = {acquisition.source.source_id: acquisition.source for acquisition in acquisitions if acquisition.source}
-                failures = [acquisition.failure for acquisition in acquisitions if acquisition.failure]
-                transports = sorted({acquisition.transport for acquisition in acquisitions})
-                status = state if state == "refreshed" else ("ok" if source_sets[seed.app_id] else "failed")
-                self.store.append_event("evidence", status, app_id=seed.app_id, source_count=len(source_sets[seed.app_id]), transport=",".join(transports), failure=" | ".join(failures) if failures else None)
             packs[seed.app_id] = build_evidence_pack(source_sets[seed.app_id].values())
             self.store.write_json(f"evidence_packs/{seed.app_id}.json", {"excerpts": [asdict(excerpt) for excerpt in packs[seed.app_id].excerpts], "omitted_characters": packs[seed.app_id].omitted_characters})
 
@@ -109,13 +129,13 @@ class ResearchPipeline:
             critic_path = f"passes/critic_{batch_index:02d}.json"
             first_raw = self.store.read_json(researcher_path) if self.store.relative_path(researcher_path).exists() else None
             if not is_valid_pass_batch(first_raw, batch):
-                first_raw = research_batch(self.client, batch, packs, source_sets)
+                first_raw = research_with_fallback(self.client, batch, packs, source_sets)
                 self.store.write_json(researcher_path, first_raw)
             else:
                 self.store.append_event("researcher", "resumed", batch=batch_index, record_count=len(first_raw))
             critic_raw = self.store.read_json(critic_path) if self.store.relative_path(critic_path).exists() else None
             if not is_valid_pass_batch(critic_raw, batch):
-                critic_raw = critique_batch(self.client, batch, packs, source_sets, first_raw)
+                critic_raw = critique_with_fallback(self.client, batch, packs, source_sets, first_raw)
                 self.store.write_json(critic_path, critic_raw)
             else:
                 self.store.append_event("critic", "resumed", batch=batch_index, record_count=len(critic_raw))

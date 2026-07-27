@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "shared_hosts": ["github.com", "stoplight.io", "readme.io", "gitbook.io"],
+  "overrides": {
+    "paygent_connect": {
+      "allowed_hosts": [],
+      "allowed_path_prefixes": [],
+      "notes": "No authoritative domain is assumed from the assignment hint. Approve an official vendor domain only after manual review during evidence acquisition."
+    },
+    "sherlock": {
+      "allowed_hosts": ["github.com"],
+      "allowed_path_prefixes": ["/sherlock-project/sherlock"]
+    },
+    "mermaid_cli": {
+      "allowed_hosts": ["github.com"],
+      "allowed_path_prefixes": ["/mermaid-js/mermaid-cli"]
+    }
+  }
+}

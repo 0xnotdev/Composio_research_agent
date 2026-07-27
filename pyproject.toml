@@ -1,0 +1,8 @@
+[project]
+name = "composio-research-agent"
+version = "0.1.0"
+description = "Evidence-grounded 100-app buildability research pipeline"
+requires-python = ">=3.11"
+
+[tool.unittest]
+start-directory = "tests"

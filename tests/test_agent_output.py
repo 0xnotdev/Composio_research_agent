@@ -13,6 +13,10 @@ class AgentOutputTests(unittest.TestCase):
         with self.assertRaises(AgentOutputError):
             parse_ordered_jsonl('{"app_id":"github"}\n{"app_id":"slack"}', ["slack", "github"])
 
+    def test_parser_accepts_json_mode_records_wrapper(self) -> None:
+        records = parse_ordered_jsonl('{"records":[{"app_id":"slack"},{"app_id":"github"}]}', ["slack", "github"])
+        self.assertEqual(len(records), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

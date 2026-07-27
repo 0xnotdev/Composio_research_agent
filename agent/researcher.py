@@ -13,8 +13,8 @@ from .models import AppSeed, EvidenceSource
 
 RESEARCHER_SYSTEM_PROMPT = """You are a product-integration research analyst.
 Use only the supplied official-source excerpts. Never use outside knowledge, memory,
-or assumptions. Produce strict JSONL only: exactly one JSON object per requested app,
-in supplied order, with no markdown and no prose.
+or assumptions. Produce one strict JSON object only: {"records":[...]}. Its records
+array must contain exactly one object per requested app, in supplied order, with no markdown or prose.
 
 Every non-null factual field must include citations containing one or more supplied E##
 excerpt IDs. If evidence does not directly support a field, return null with an empty

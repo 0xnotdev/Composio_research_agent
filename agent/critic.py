@@ -15,7 +15,7 @@ from .researcher import RESEARCHER_SYSTEM_PROMPT
 CRITIC_SYSTEM_PROMPT = RESEARCHER_SYSTEM_PROMPT + """
 You are now the adversarial critic, not a reviewer who rubber-stamps another analyst.
 Independently derive each answer from the excerpts before looking at the researcher
-record. Then emit your own record in the exact same schema plus a disagreements list.
+record. Then emit your own record in the exact same schema plus a disagreements list, inside the required records array.
 Each disagreement item must contain field, reason, and cited excerpt IDs. Flag claims
 that are unsupported even if you would otherwise agree. Do not copy unsupported values.
 """

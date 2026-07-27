@@ -55,6 +55,7 @@ class OpenRouterClient:
                     {"role": "user", "content": user},
                 ],
                 "temperature": 0,
+                "response_format": {"type": "json_object"},
             }
         ).encode("utf-8")
         request = Request(

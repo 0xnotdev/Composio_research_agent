@@ -11,7 +11,14 @@ class AgentOutputError(ValueError):
 
 
 def parse_ordered_jsonl(raw: str, expected_app_ids: list[str]) -> list[dict[str, Any]]:
-    lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    try:
+        wrapped = json.loads(raw)
+        if isinstance(wrapped, dict) and isinstance(wrapped.get("records"), list):
+            lines = [json.dumps(record) for record in wrapped["records"]]
+        else:
+            lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    except json.JSONDecodeError:
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
     if len(lines) != len(expected_app_ids):
         raise AgentOutputError(f"Expected {len(expected_app_ids)} JSONL rows, received {len(lines)}")
     records: list[dict[str, Any]] = []

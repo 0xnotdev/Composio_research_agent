@@ -22,7 +22,8 @@ citation list and confidence 'insufficient_evidence'. Do not infer OAuth, pricin
 API breadth, or MCP support. A CLI/open-source project can be not_applicable rather
 than forced into a hosted-SaaS answer.
 
-Field wrapper format: {"value": <value-or-null>, "citations": ["E01"], "confidence": <string>, "note": <optional-string>}.
+The top-level app_id is a bare JSON string exactly equal to the supplied app ID. Never wrap app_id.
+Every other field uses this wrapper: {"value": <value-or-null>, "citations": ["E01"], "confidence": <string>, "note": <optional-string>}.
 Return these fields: app_id, one_liner, auth_methods, credential_path, gating_reasons,
 api_surface.protocols, api_surface.breadth, api_surface.documented,
 mcp.official_vendor_mcp, mcp.public_mcp_exists, extras.webhooks, extras.sandbox,

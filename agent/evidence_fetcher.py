@@ -107,6 +107,7 @@ class ComposioSearchFetcher:
     """
 
     TOOL_SLUG = "COMPOSIO_SEARCH_FETCH_URL_CONTENT"
+    TOOL_VERSION = "20260618_00"
 
     def __init__(self, api_key: str, api_base: str, timeout_seconds: int = 45) -> None:
         self.api_key = api_key
@@ -131,20 +132,24 @@ class ComposioSearchFetcher:
         return self._request("GET", f"/tools/{self.TOOL_SLUG}")
 
     def fetch(self, url: str) -> FetchResponse:
-        # Checkpoint 0 must compare this request body to inspect_tool_schema().
+        # Confirmed against the live schema on 2026-07-27: `urls` is an array and
+        # the response wraps page entries in `data.results`.
         payload = self._request(
             "POST",
             f"/tools/execute/{self.TOOL_SLUG}",
-            {"arguments": {"url": _normalise_url(url)}, "version": "latest"},
+            {"arguments": {"urls": [_normalise_url(url)], "text": True, "max_characters": 12000}, "version": self.TOOL_VERSION},
         )
-        result = payload.get("data", payload)
+        execution = payload.get("data", payload)
+        result = execution.get("data", execution) if isinstance(execution, dict) else None
         if not isinstance(result, dict):
             raise FetchError("Composio fetch returned an unexpected non-object payload")
-        content = result.get("content") or result.get("text") or result.get("data")
+        entries = result.get("results", [])
+        entry = entries[0] if isinstance(entries, list) and entries and isinstance(entries[0], dict) else result
+        content = entry.get("content") or entry.get("text")
         if not isinstance(content, str) or not content.strip():
             raise FetchError("Composio fetch returned no readable content")
-        final_url = str(result.get("url") or url)
-        return FetchResponse(_normalise_url(url), final_url, str(result.get("title") or "Official documentation"), content, "text/plain", "composio_search")
+        final_url = str(entry.get("url") or url)
+        return FetchResponse(_normalise_url(url), final_url, str(entry.get("title") or "Official documentation"), content, "text/plain", "composio_search")
 
 
 class ResilientFetcher:

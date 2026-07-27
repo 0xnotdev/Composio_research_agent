@@ -55,6 +55,13 @@ To regenerate an untouched worksheet using the highest-coverage app in each cate
 python -m agent.create_verification_sample --dataset data/runs/audit-1/dataset_final.json --output data/runs/audit-1/verification_sample.json
 ```
 
+Generate four evidence-constrained, agent-written portfolio patterns from the deterministic metrics, then include them when rendering the case study:
+
+```powershell
+python -m agent.pattern_agent --analytics data/runs/audit-1/analytics.json --output data/runs/audit-1/patterns.json
+python -m agent.render_case_study --dataset data/runs/audit-1/dataset_final.json --analytics data/runs/audit-1/analytics.json --patterns data/runs/audit-1/patterns.json --output site/index.html --generated-at 2026-07-28
+```
+
 The one-app proof reuses the exact pipeline:
 
 ```powershell

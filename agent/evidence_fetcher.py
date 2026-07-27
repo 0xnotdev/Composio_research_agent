@@ -12,6 +12,7 @@ from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+from urllib.parse import unquote
 
 from .models import AppSeed, EvidenceSource
 from .source_policy import SourcePolicy
@@ -108,6 +109,7 @@ class ComposioSearchFetcher:
 
     TOOL_SLUG = "COMPOSIO_SEARCH_FETCH_URL_CONTENT"
     TOOL_VERSION = "20260618_00"
+    SEARCH_TOOL_SLUG = "COMPOSIO_SEARCH_WEB"
 
     def __init__(self, api_key: str, api_base: str, timeout_seconds: int = 45) -> None:
         self.api_key = api_key
@@ -151,6 +153,29 @@ class ComposioSearchFetcher:
         final_url = str(entry.get("url") or url)
         return FetchResponse(_normalise_url(url), final_url, str(entry.get("title") or "Official documentation"), content, "text/plain", "composio_search")
 
+    def search_urls(self, query: str) -> list[str]:
+        """Discover candidates; SourcePolicy still decides which are usable evidence."""
+        payload = self._request(
+            "POST",
+            f"/tools/execute/{self.SEARCH_TOOL_SLUG}",
+            {"arguments": {"query": query}, "version": self.TOOL_VERSION},
+        )
+        urls: list[str] = []
+
+        def visit(value: Any) -> None:
+            if isinstance(value, dict):
+                for item in value.values():
+                    visit(item)
+            elif isinstance(value, list):
+                for item in value:
+                    visit(item)
+            elif isinstance(value, str):
+                for candidate in re.findall(r"https?://[^\s\]\[\"<>]+", value):
+                    urls.append(unquote(candidate.rstrip(".,;)")))
+
+        visit(payload)
+        return list(dict.fromkeys(urls))
+
 
 class ResilientFetcher:
     def __init__(self, primary: UrlFetcher | None, fallback: UrlFetcher | None) -> None:
@@ -189,6 +214,36 @@ def acquire_hint_evidence(seed: AppSeed, fetcher: UrlFetcher, policy: SourcePoli
         text=response.text,
     )
     return EvidenceAcquisition(source, response.transport)
+
+
+def acquire_official_evidence(seed: AppSeed, fetcher: UrlFetcher, policy: SourcePolicy, max_sources: int = 3) -> list[EvidenceAcquisition]:
+    """Fetch the assigned hint then fill thin coverage with official-doc discoveries."""
+    results = [acquire_hint_evidence(seed, fetcher, policy)]
+    primary = getattr(fetcher, "primary", fetcher)
+    search = getattr(primary, "search_urls", None)
+    if not callable(search):
+        return results
+    source_count = int(results[0].source is not None)
+    try:
+        candidates = search(f"{seed.name} official developer documentation API authentication")
+    except FetchError as error:
+        return results + [EvidenceAcquisition(None, "composio_search", f"official-doc discovery failed: {error}")]
+    for candidate in candidates:
+        if source_count >= max_sources or not policy.is_accepted(seed, candidate):
+            continue
+        acquisition = acquire_hint_evidence(seed, fetcher, policy)
+        # Fetch the discovered URL directly; acquire_hint_evidence intentionally uses seed.hint.
+        try:
+            response = fetcher.fetch(candidate)
+        except FetchError as error:
+            results.append(EvidenceAcquisition(None, "failed", str(error)))
+            continue
+        if not policy.is_accepted(seed, response.final_url):
+            continue
+        source_count += 1
+        source = EvidenceSource(f"S{source_count:02d}", response.final_url, response.title, "official_docs", datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"), response.text)
+        results.append(EvidenceAcquisition(source, response.transport))
+    return results
 
 
 def acquisition_to_dict(acquisition: EvidenceAcquisition) -> dict[str, Any]:

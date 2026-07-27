@@ -14,6 +14,7 @@ class SourcePolicyTests(unittest.TestCase):
         self.assertTrue(self.policy.is_accepted(slack, "https://api.slack.com/authentication"))
         self.assertFalse(self.policy.is_accepted(slack, "https://slack.example.com/oauth"))
         self.assertFalse(self.policy.is_accepted(slack, "http://api.slack.com/authentication"))
+        self.assertTrue(self.policy.is_accepted(slack, "https://docs.slack.dev/authentication"))
 
     def test_official_github_repositories_are_path_scoped(self) -> None:
         sherlock = AppSeed("sherlock", "Sherlock", "Data", "github.com/sherlock-project/sherlock")

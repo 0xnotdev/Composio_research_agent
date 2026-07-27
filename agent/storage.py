@@ -10,6 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .redaction import redact
+
 
 RUN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
 
@@ -53,7 +55,8 @@ class RunStore:
         return json.loads(self.relative_path(relative).read_text(encoding="utf-8"))
 
     def append_event(self, stage: str, status: str, **details: Any) -> None:
-        event = {"at": utc_now(), "stage": stage, "status": status, **details}
+        safe_details = {key: redact(value) if isinstance(value, str) and ("error" in key or "failure" in key) else value for key, value in details.items()}
+        event = {"at": utc_now(), "stage": stage, "status": status, **safe_details}
         path = self.relative_path("logs/event_log.jsonl")
         with path.open("a", encoding="utf-8", newline="\n") as stream:
             stream.write(json.dumps(event, ensure_ascii=False, default=json_default) + "\n")

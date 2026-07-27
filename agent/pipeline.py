@@ -13,7 +13,7 @@ from .analytics import calculate_analytics
 from .config import PROJECT_ROOT, Settings
 from .composio_catalog import ComposioCatalogClient, cross_check
 from .critic import critique_batch
-from .evidence_fetcher import ComposioSearchFetcher, HttpFetcher, ResilientFetcher, acquire_hint_evidence, acquisition_to_dict
+from .evidence_fetcher import ComposioSearchFetcher, HttpFetcher, ResilientFetcher, acquire_official_evidence, acquisition_to_dict
 from .evidence_packer import build_evidence_pack
 from .llm_client import OpenRouterClient, RequestLedger
 from .models import AppSeed, EvidenceSource
@@ -43,13 +43,15 @@ class ResearchPipeline:
         source_sets: dict[str, dict[str, EvidenceSource]] = {}
         packs = {}
         for seed in seeds:
-            acquisition = acquire_hint_evidence(seed, self.fetcher, self.policy)
-            self.store.write_json(f"raw_evidence/{seed.app_id}.json", acquisition_to_dict(acquisition))
-            sources = {acquisition.source.source_id: acquisition.source} if acquisition.source else {}
+            acquisitions = acquire_official_evidence(seed, self.fetcher, self.policy)
+            self.store.write_json(f"raw_evidence/{seed.app_id}.json", [acquisition_to_dict(acquisition) for acquisition in acquisitions])
+            sources = {acquisition.source.source_id: acquisition.source for acquisition in acquisitions if acquisition.source}
             source_sets[seed.app_id] = sources
             packs[seed.app_id] = build_evidence_pack(sources.values())
             self.store.write_json(f"evidence_packs/{seed.app_id}.json", {"excerpts": [asdict(excerpt) for excerpt in packs[seed.app_id].excerpts], "omitted_characters": packs[seed.app_id].omitted_characters})
-            self.store.append_event("evidence", "ok" if acquisition.source else "failed", app_id=seed.app_id, transport=acquisition.transport, failure=acquisition.failure)
+            failures = [acquisition.failure for acquisition in acquisitions if acquisition.failure]
+            transports = sorted({acquisition.transport for acquisition in acquisitions})
+            self.store.append_event("evidence", "ok" if sources else "failed", app_id=seed.app_id, transport=",".join(transports), failure=" | ".join(failures) if failures else None)
 
         final_records: list[dict[str, Any]] = []
         for batch_index, batch in enumerate(chunks(seeds)):

@@ -2,6 +2,11 @@
   "version": "1.0",
   "shared_hosts": ["github.com", "stoplight.io", "readme.io", "gitbook.io"],
   "overrides": {
+    "slack": {
+      "allowed_hosts": ["slack.com", "api.slack.com", "docs.slack.dev"],
+      "allowed_path_prefixes": [],
+      "notes": "Official Slack developer documentation is served from docs.slack.dev and api.slack.com."
+    },
     "paygent_connect": {
       "allowed_hosts": [],
       "allowed_path_prefixes": [],

@@ -53,7 +53,7 @@ def _table_row(record: dict[str, Any]) -> str:
     ) + "</tr>"
 
 
-def render_case_study(records: list[dict[str, Any]], analytics: dict[str, Any], verification: dict[str, Any] | None, generated_at: str, patterns: list[dict[str, Any]] | None = None) -> str:
+def render_case_study(records: list[dict[str, Any]], analytics: dict[str, Any], verification: dict[str, Any] | None, generated_at: str, patterns: list[dict[str, Any]] | None = None, simulated_review: dict[str, Any] | None = None) -> str:
     rows = "\n".join(_table_row(record) for record in records)
     wins = "".join(f"<li>{_escape(item['name'])} <span>{_escape(item['category'])}</span></li>" for item in analytics.get("easy_wins", [])[:10]) or "<li>No fully evidenced easy wins yet.</li>"
     outreach = "".join(f"<li>{_escape(item['name'])} <span>{_escape(item['category'])}</span></li>" for item in analytics.get("outreach_candidates", [])[:10]) or "<li>No fully evidenced outreach candidates yet.</li>"
@@ -68,6 +68,10 @@ def render_case_study(records: list[dict[str, Any]], analytics: dict[str, Any], 
     verification = verification or {}
     v_pass1 = verification.get("pass1_accuracy_percent", "Pending")
     v_final = verification.get("final_pre_human_accuracy_percent", "Pending")
+    simulated_review = simulated_review or {}
+    simulated_section = ""
+    if simulated_review:
+        simulated_section = f'<section><h2>Time-boxed AI-simulated reviewer diagnostic</h2><div class="card note"><p><strong>Not human validation.</strong> {_escape(simulated_review.get("disclosure"))}</p><p>Scope: {_escape(simulated_review.get("review_scope"))}. Simulated fields judged: {_escape(simulated_review.get("judged_fields"))}. Pass-one agreement: {_escape(simulated_review.get("pass1_accuracy_percent"))}%. Final pre-human agreement: {_escape(simulated_review.get("final_pre_human_accuracy_percent"))}%.</p></div></section>'
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>100-App Buildability Audit</title>
@@ -83,7 +87,7 @@ main{{max-width:1240px;margin:auto;padding:42px 24px 80px}} h1{{font-size:clamp(
 <section><h2>What the portfolio says</h2><p>Metrics are calculated directly from the audited dataset used to render this matrix. Unknown and conflicting fields are retained rather than smoothed away: {coverage.get('conflicting_fields',0)} fields remain conflicting.</p><div class="two"><div class="card"><h3>Easy wins</h3><p>Self-serve, technically ready apps with a moderate/broad API surface and no official vendor MCP.</p><ul>{wins}</ul></div><div class="card"><h3>Needs outreach</h3><p>Strong API surface, but partner or sales access constrains a toolkit launch.</p><ul>{outreach}</ul></div></div></section>
 <section><h2>The research agent</h2><div class="workflow"><div class="step"><b>1. Acquire</b>Official docs only; Composio Search first.</div><div class="step"><b>2. Extract</b>Researcher cites exact evidence excerpts.</div><div class="step"><b>3. Challenge</b>Critic re-derives and flags disagreement.</div><div class="step"><b>4. Reconcile</b>Code validates citations and derives verdicts.</div><div class="step"><b>5. Verify</b>Human checks a stratified 12-app sample.</div></div><p class="note">A model agreement is not treated as verification. Each populated claim requires an official-source excerpt; the accuracy figures below are based on manual review.</p></section>
 <section><h2>Findings matrix</h2><div class="controls"><input id="search" type="search" placeholder="Filter apps or categories"><select id="verdict"><option value="">All verdicts</option><option>ready_now</option><option>buildable_with_access_constraint</option><option>buildable_with_technical_workaround</option><option>blocked</option><option>insufficient_evidence</option></select></div><div class="table-wrap"><table id="matrix"><thead><tr><th>App</th><th>Category</th><th>Auth</th><th>Credential path</th><th>API</th><th>Official / public MCP</th><th>Verdict</th><th>Confidence</th><th>Evidence</th></tr></thead><tbody>{rows}</tbody></table></div></section>
-<section><h2>Verification</h2><div class="grid"><div class="card"><div class="metric">{_escape(v_pass1)}{'' if isinstance(v_pass1, str) and v_pass1 == 'Pending' else '%'}</div><div class="metric-label">pass-one accuracy on manually judged fields</div></div><div class="card"><div class="metric">{_escape(v_final)}{'' if isinstance(v_final, str) and v_final == 'Pending' else '%'}</div><div class="metric-label">final pre-human accuracy on the same fields</div></div><div class="card"><div class="metric">{verification.get('judged_fields','Pending')}</div><div class="metric-label">judged field comparisons</div></div><div class="card"><div class="metric">{len(verification.get('misses',[])) if verification else 'Pending'}</div><div class="metric-label">final misses retained honestly</div></div></div><p>Verification is pending until the reviewer completes the 12-app official-doc sample. The page will not claim an improvement unless the recorded comparison demonstrates one.</p></section>
+<section><h2>Human verification</h2><div class="grid"><div class="card"><div class="metric">{_escape(v_pass1)}{'' if isinstance(v_pass1, str) and v_pass1 == 'Pending' else '%'}</div><div class="metric-label">pass-one accuracy on manually judged fields</div></div><div class="card"><div class="metric">{_escape(v_final)}{'' if isinstance(v_final, str) and v_final == 'Pending' else '%'}</div><div class="metric-label">final pre-human accuracy on the same fields</div></div><div class="card"><div class="metric">{verification.get('judged_fields','Pending')}</div><div class="metric-label">judged field comparisons</div></div><div class="card"><div class="metric">{len(verification.get('misses',[])) if verification else 'Pending'}</div><div class="metric-label">final misses retained honestly</div></div></div><p>Human verification remains pending. The page does not claim human-reviewed accuracy unless a real person completes the 12-app official-doc sample.</p></section>{simulated_section}
 <section><h2>Run it yourself</h2><div class="card"><code>python research_one_app.py "Slack"</code><p>The command runs the same evidence, research, critic, validation, and reconciliation path for one app. It returns insufficient evidence rather than guessing when official sources do not support an answer.</p></div></section>
 <section><h2>Limitations</h2><p>This is a dated public-documentation snapshot, not a guarantee of production access. Some assigned items are CLIs, open-source projects, thinly documented products, or commercial APIs; those are treated as explicit non-applicable, gated, or insufficient-evidence outcomes rather than forced into a SaaS/OAuth shape.</p></section>
 </main><script>const q=document.querySelector('#search'),v=document.querySelector('#verdict'),rows=[...document.querySelectorAll('#matrix tbody tr')];function filter(){{const term=q.value.toLowerCase(), verdict=v.value;rows.forEach(r=>{{const ok=!term||r.innerText.toLowerCase().includes(term);const vok=!verdict||r.cells[6].innerText===verdict;r.hidden=!(ok&&vok)}})}}q.addEventListener('input',filter);v.addEventListener('change',filter);</script></body></html>"""
@@ -95,6 +99,7 @@ def main() -> None:
     parser.add_argument("--analytics", type=Path, required=True)
     parser.add_argument("--verification", type=Path)
     parser.add_argument("--patterns", type=Path)
+    parser.add_argument("--simulated-review", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--generated-at", default="local build")
     args = parser.parse_args()
@@ -103,8 +108,9 @@ def main() -> None:
     verification = json.loads(args.verification.read_text(encoding="utf-8")) if args.verification else None
     pattern_payload = json.loads(args.patterns.read_text(encoding="utf-8")) if args.patterns else {}
     patterns = pattern_payload.get("patterns") if isinstance(pattern_payload, dict) else None
+    simulated_review = json.loads(args.simulated_review.read_text(encoding="utf-8")) if args.simulated_review else None
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(render_case_study(records, analytics, verification, args.generated_at, patterns), encoding="utf-8")
+    args.output.write_text(render_case_study(records, analytics, verification, args.generated_at, patterns, simulated_review), encoding="utf-8")
 
 
 if __name__ == "__main__":

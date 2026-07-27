@@ -49,6 +49,14 @@ Complete the generated `verification_sample.json` using the linked official docu
 python -m agent.verify_sample --sample data/runs/audit-1/verification_sample.json --output data/runs/audit-1/verification_results.json
 ```
 
+### Time-boxed simulated reviewer diagnostic
+
+If no person is available before a deadline, the project can run a separate AI-simulated reviewer over retained official-source excerpts. This is explicitly labelled **not human validation** in both its artifact and the rendered page; it must not be represented as a human accuracy claim or substitute for the manual worksheet.
+
+```powershell
+python -m agent.simulated_reviewer --dataset data/runs/audit-1/dataset_final.json --sample data/runs/audit-1/verification_sample.json --output data/runs/audit-1/simulated_review.json
+```
+
 To regenerate an untouched worksheet using the highest-coverage app in each category plus two difficult cases, run:
 
 ```powershell

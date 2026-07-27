@@ -21,6 +21,7 @@ class RendererTests(unittest.TestCase):
         self.assertIn("How to read blanks and unknowns", page)
         self.assertIn("Agent-generated portfolio patterns", page)
         self.assertIn("OAuth is common", page)
+        self.assertIn("Human verification", page)
         self.assertNotIn("<link rel=\"stylesheet\"", page)
 
 

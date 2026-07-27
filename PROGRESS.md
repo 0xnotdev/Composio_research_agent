@@ -16,6 +16,17 @@ This file is the authoritative checkpoint ledger. It records verified outcomes, 
 ## Git history
 
 - `c0fbaa6` — `docs: add architecture and checkpoint plan`
+- `124781b` — `feat: establish evidence and validation core`
+- `a0171e4` — `feat: add resilient evidence acquisition artifacts`
+- `b55e81d` — `feat: add analysis verification and case study renderer`
+- `5a045c6` — `feat: add runnable audit orchestration`
+
+## Latest verification
+
+- Offline suite: **25 passing tests** (`python -m unittest discover -s tests -v`).
+- Offline fixture: a complete one-app evidence → researcher → critic → citation validation → reconciliation → artifacts run passed.
+- Python compilation: `python -m compileall -q agent research_one_app.py` passed.
+- GitHub: commits through `5a045c6` were pushed to `origin/master` on 2026-07-27.
 
 ## Current blockers
 

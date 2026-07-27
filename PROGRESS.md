@@ -6,7 +6,7 @@ This file is the authoritative checkpoint ledger. It records verified outcomes, 
 | --- | --- | --- | --- |
 | 0 — Access and reality check | Blocked on user credentials | — | Composio account/project key and OpenRouter key are not yet available. No live API calls will be attempted until provided locally in `.env`. |
 | 1 — Contracts before code | Complete | Pending commit | 100-app seed is validated, source-policy contract exists, model-output JSONL parser/validator is implemented, and deterministic reconciliation is covered by 14 offline tests. |
-| 2 — Evidence pipeline | In progress | — | Deterministic HTML/text evidence packing and official-domain gates are tested; live fetch transport, caching, and failure artifacts remain. |
+| 2 — Evidence pipeline | Complete (offline) | Pending commit | Composio-first and HTTPS fallback transports, official redirect rejection, bounded response handling, deterministic evidence packs, and atomic run-scoped artifacts are covered by 18 offline tests. Live Composio schema confirmation remains a Checkpoint-0 task. |
 | 3 — Dual-pass research | In progress (offline) | — | Researcher and critic prompts, strict ordered JSONL parsing, request ledger, citation validation, and reconciliation exist. Live two-app preflight remains blocked on credentials. |
 | 4 — Full 100-app run | Not started | — | Blocked until Checkpoint 3 and API credentials. |
 | 5 — Analysis and human verification | Not started | — | Requires final dataset. |

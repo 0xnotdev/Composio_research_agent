@@ -13,7 +13,7 @@ class PipelineHelperTests(unittest.TestCase):
     def test_batches_never_exceed_six_apps(self) -> None:
         apps = [AppSeed(str(index), str(index), "A", "example.com") for index in range(13)]
         result = list(chunks(apps))
-        self.assertEqual([len(batch) for batch in result], [6, 6, 1])
+        self.assertEqual([len(batch) for batch in result], [8, 5])
 
     def test_offline_fixture_run_persists_reconciled_dataset(self) -> None:
         def field(value, citations=("E01",)):

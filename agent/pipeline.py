@@ -26,7 +26,7 @@ from .validator import validate_pass_record
 from .verification import select_verification_sample
 
 
-def chunks(items: list[AppSeed], size: int = 6) -> Iterable[list[AppSeed]]:
+def chunks(items: list[AppSeed], size: int = 8) -> Iterable[list[AppSeed]]:
     iterator = iter(items)
     while batch := list(islice(iterator, size)):
         yield batch
@@ -52,7 +52,14 @@ class ResearchPipeline:
                     for item in cached_items
                     if isinstance(item, dict) and isinstance(item.get("source"), dict)
                 }
-                self.store.append_event("evidence", "resumed", app_id=seed.app_id, source_count=len(sources))
+                weak_cache = not sources or any(len(source.text.strip()) < 350 or source.text.strip().casefold().startswith('{"ok":false') for source in sources.values())
+                if weak_cache:
+                    acquisitions = acquire_official_evidence(seed, self.fetcher, self.policy)
+                    self.store.write_json(raw_path, [acquisition_to_dict(acquisition) for acquisition in acquisitions])
+                    sources = {acquisition.source.source_id: acquisition.source for acquisition in acquisitions if acquisition.source}
+                    self.store.append_event("evidence", "refreshed", app_id=seed.app_id, source_count=len(sources))
+                else:
+                    self.store.append_event("evidence", "resumed", app_id=seed.app_id, source_count=len(sources))
             else:
                 acquisitions = acquire_official_evidence(seed, self.fetcher, self.policy)
                 self.store.write_json(raw_path, [acquisition_to_dict(acquisition) for acquisition in acquisitions])

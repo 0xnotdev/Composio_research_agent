@@ -224,26 +224,44 @@ def acquire_official_evidence(seed: AppSeed, fetcher: UrlFetcher, policy: Source
     if not callable(search):
         return results
     source_count = int(results[0].source is not None)
+    candidates: list[str] = []
+    queries = (
+        f"{seed.name} official developer documentation authentication overview OAuth",
+        f"{seed.name} official developer API overview webhooks",
+        f"{seed.name} official API documentation pricing access",
+    )
     try:
-        candidates = search(f"{seed.name} official developer documentation API authentication")
+        for query in queries:
+            candidates.extend(search(query))
     except FetchError as error:
         return results + [EvidenceAcquisition(None, "composio_search", f"official-doc discovery failed: {error}")]
+    candidates = list(dict.fromkeys(candidates))
     for candidate in candidates:
         if source_count >= max_sources or not policy.is_accepted(seed, candidate):
             continue
-        acquisition = acquire_hint_evidence(seed, fetcher, policy)
         # Fetch the discovered URL directly; acquire_hint_evidence intentionally uses seed.hint.
         try:
             response = fetcher.fetch(candidate)
         except FetchError as error:
             results.append(EvidenceAcquisition(None, "failed", str(error)))
             continue
-        if not policy.is_accepted(seed, response.final_url):
+        if not policy.is_accepted(seed, response.final_url) or not _usable_document(response):
             continue
         source_count += 1
         source = EvidenceSource(f"S{source_count:02d}", response.final_url, response.title, "official_docs", datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"), response.text)
         results.append(EvidenceAcquisition(source, response.transport))
     return results
+
+
+def _usable_document(response: FetchResponse) -> bool:
+    """Reject successful fetches that are API operation responses or error payloads."""
+    text = response.text.strip().casefold()
+    path = urlparse(response.final_url).path.casefold()
+    if len(text) < 350 or text.startswith('{"ok":false') or '"error"' in text[:200]:
+        return False
+    if '/api/' in path and not any(marker in path for marker in ('docs', 'developer', 'reference')):
+        return False
+    return True
 
 
 def acquisition_to_dict(acquisition: EvidenceAcquisition) -> dict[str, Any]:

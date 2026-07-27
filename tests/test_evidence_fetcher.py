@@ -1,6 +1,6 @@
 import unittest
 
-from agent.evidence_fetcher import FetchError, FetchResponse, ResilientFetcher, acquire_hint_evidence
+from agent.evidence_fetcher import FetchError, FetchResponse, HttpFetcher, ResilientFetcher, acquire_hint_evidence
 from agent.models import AppSeed
 from agent.source_policy import SourcePolicy
 
@@ -31,6 +31,10 @@ class EvidenceFetcherTests(unittest.TestCase):
         response = FetchResponse("https://slack.com", "https://api.slack.com/docs", "Docs", "OAuth docs", "text/html", "fallback")
         fetcher = ResilientFetcher(StubFetcher(error=FetchError("primary unavailable")), StubFetcher(response))
         self.assertEqual(fetcher.fetch("https://slack.com").final_url, "https://api.slack.com/docs")
+
+    def test_malformed_assignment_hint_becomes_fetch_error(self) -> None:
+        with self.assertRaises(FetchError):
+            HttpFetcher().fetch("paygent (NMI-powered)")
 
 
 if __name__ == "__main__":

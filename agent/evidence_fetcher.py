@@ -82,8 +82,8 @@ class HttpFetcher:
     def fetch(self, url: str) -> FetchResponse:
         normalised = _normalise_url(url)
         parsed = urlparse(normalised)
-        if parsed.scheme != "https":
-            raise FetchError("Only HTTPS source URLs are allowed")
+        if parsed.scheme != "https" or not parsed.hostname or any(character.isspace() for character in normalised):
+            raise FetchError("Source URL must be a valid HTTPS URL without whitespace")
         request = Request(normalised, headers={"User-Agent": "ComposioResearchAgent/0.1 (+research assignment)"})
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
